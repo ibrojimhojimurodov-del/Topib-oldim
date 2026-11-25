@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Topib oldi Shahri — Toshkent 3D</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Inter,system-ui,sans-serif;background:#050a14;color:#f8fafc}
+#host{position:fixed;inset:0;touch-action:none}canvas{display:block}
+.g{background:rgba(9,15,29,.84);backdrop-filter:blur(14px);border:1px solid rgba(148,163,184,.22);box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.in{width:100%;border-radius:12px;background:#0f172a;border:1px solid rgba(255,255,255,.15);padding:9px 12px;font-size:14px;color:#fff;outline:none}
+.lb{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#cbd5e1;margin-bottom:4px}
+.btn{border-radius:12px;padding:9px 12px;font-weight:700;font-size:13px;cursor:pointer;color:#fff}
+.chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.1)}
+.sw{width:30px;height:30px;border-radius:50%;cursor:pointer;opacity:.75}.sw.on{opacity:1;outline:2px solid #fff;transform:scale(1.1)}
+</style>
+</head>
+<body>
+<div id="host"></div>
+<div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition w-[92%] max-w-md"><div id="toast-msg" class="g rounded-2xl px-4 py-2 text-sm font-semibold text-center text-cyan-100"></div></div>
+
+<header class="fixed top-0 inset-x-0 z-30 p-2 flex flex-col lg:flex-row gap-2 pointer-events-none">
+  <div class="g rounded-2xl px-3 py-2 flex items-center justify-between gap-3 pointer-events-auto">
+    <div class="min-w-0"><div class="font-extrabold text-sm">🏙️ Topib oldi Shahri <span id="srv" class="text-[10px] ml-1 px-2 py-0.5 rounded-full bg-white/10">…</span></div>
+    <div id="sector" class="text-[11px] text-cyan-300 truncate">📍 Toshkent Markazi</div></div>
+    <span id="counter" class="chip shrink-0">0 ta bino</span>
+  </div>
+  <div class="pointer-events-auto flex items-center gap-1.5 overflow-x-auto">
+    <form id="jump" class="g rounded-xl flex items-center px-2 py-1 gap-1 shrink-0"><span class="text-cyan-300 text-xs font-bold">#</span>
+      <input id="jump-in" type="number" min="1" max="1000000" placeholder="1 – 1,000,000" class="w-28 bg-transparent text-sm font-semibold outline-none"><button class="text-xs font-bold text-cyan-200 px-1">🔎</button></form>
+    <select id="dist" class="g rounded-xl px-3 py-2 text-sm font-semibold shrink-0 bg-slate-900"></select>
+    <button id="btn-atmo" class="g rounded-xl px-3 py-2 text-sm shrink-0">☀️</button>
+    <button id="btn-top" class="g rounded-xl px-3 py-2 text-sm shrink-0">🏆</button>
+    <button id="btn-db" class="g rounded-xl px-3 py-2 text-sm shrink-0">🗄️</button>
+  </div>
+</header>
+
+<aside class="fixed right-2 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
+  <button id="c-in" class="g w-10 h-10 rounded-2xl font-bold text-lg">+</button><button id="c-out" class="g w-10 h-10 rounded-2xl font-bold text-lg">−</button>
+  <button id="c-l" class="g w-10 h-10 rounded-2xl">↺</button><button id="c-r" class="g w-10 h-10 rounded-2xl">↻</button><button id="c-0" class="g w-10 h-10 rounded-2xl">🎯</button>
+</aside>
+
+<section id="insp" class="fixed bottom-20 left-2 z-30 w-[calc(100%-1rem)] max-w-md g rounded-3xl p-4 opacity-0 pointer-events-none transition">
+  <div class="flex justify-between gap-2"><div class="min-w-0"><span id="i-tag" class="chip text-cyan-300"></span>
+    <h2 id="i-title" class="font-extrabold text-lg truncate mt-1"></h2><p id="i-sub" class="text-xs text-cyan-200 truncate"></p></div>
+    <button id="i-close" class="w-8 h-8 rounded-xl bg-white/10 shrink-0">✕</button></div>
+  <p id="i-desc" class="text-sm text-slate-200 mt-2"></p><div id="i-chips" class="flex flex-wrap gap-1.5 mt-2"></div>
+  <div class="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-2">
+    <button id="i-home" class="btn hidden flex-1 bg-emerald-600">🏡 Uy qurish</button><button id="i-biz" class="btn hidden flex-1 bg-amber-600">🏢 Kasb binosi</button>
+    <button id="i-like" class="btn hidden flex-1 bg-rose-500/30">❤️ <span id="i-likes">0</span></button>
+    <button id="i-edit" class="btn hidden bg-cyan-500/30">✏️ Tahrir</button><button id="i-del" class="btn hidden bg-red-500/30">🗑️</button></div>
+</section>
+
+<nav class="fixed bottom-2 inset-x-0 z-30 px-2"><div class="max-w-3xl mx-auto g rounded-2xl p-2 flex gap-1.5">
+  <button id="n-home" class="btn flex-1 bg-gradient-to-r from-emerald-500 to-teal-600">🏡 Uy qurish</button>
+  <button id="n-biz" class="btn flex-1 bg-gradient-to-r from-amber-500 to-orange-600">🏢 Kasb binosi</button>
+  <button id="n-fw" class="btn bg-purple-600">🎆</button><button id="n-my" class="btn bg-white/10">🧭 Mening</button></div></nav>
+
+<!-- Qurish oynasi -->
+<div id="m-build" class="modal fixed inset-0 z-50 hidden items-center justify-center p-3 bg-black/75"><div class="g w-full max-w-lg rounded-3xl p-5 max-h-[92vh] overflow-y-auto">
+  <div class="flex justify-between items-center pb-3 border-b border-white/10"><h3 id="b-title" class="text-lg font-extrabold"></h3><button data-x class="w-9 h-9 rounded-xl bg-white/10">✕</button></div>
+  <form id="b-form" class="mt-4 space-y-3">
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div id="b-namebox"><label class="lb" for="b-name">Kompaniya nomi</label><input id="b-name" class="in" maxlength="26" placeholder="Altron IT Lab"></div>
+      <div><label class="lb" for="b-owner" id="b-ownerlb">Egasi</label><input id="b-owner" class="in" maxlength="22" required placeholder="Jasurbek"></div></div>
+    <div><label class="lb" for="b-plot">Uchastka (1 – 1,000,000)</label><input id="b-plot" type="number" min="1" max="1000000" required class="in"><p id="b-dist" class="text-[11px] text-emerald-300 mt-1"></p></div>
+    <div><label class="lb" for="b-type">Turi</label><select id="b-type" class="in"></select></div>
+    <div><div class="flex justify-between"><label class="lb" for="b-floors">Qavatlar</label><span id="b-fl" class="text-sm font-extrabold text-emerald-300"></span></div><input id="b-floors" type="range" min="1" value="1" class="w-full"></div>
+    <div id="b-homeonly" class="space-y-3"><div><label class="lb" for="b-car">🚘 Avtomobil</label><select id="b-car" class="in"></select></div>
+      <div class="grid grid-cols-2 gap-2 text-xs font-semibold" id="b-opts"></div></div>
+    <div><span class="lb">Rang</span><div id="b-colors" class="flex gap-2 flex-wrap"></div></div>
+    <div class="flex justify-end gap-2 pt-2"><button type="button" data-x class="btn bg-white/10">Bekor</button><button class="btn bg-gradient-to-r from-emerald-500 to-teal-600">✅ Qurish</button></div>
+  </form></div></div>
+
+<div id="m-top" class="modal fixed inset-0 z-50 hidden items-center justify-center p-3 bg-black/75"><div class="g w-full max-w-lg rounded-3xl p-5 max-h-[88vh] overflow-y-auto">
+  <div class="flex justify-between items-center pb-3 border-b border-white/10"><h3 class="text-lg font-extrabold">🏆 Mashhur obyektlar</h3><button data-x class="w-9 h-9 rounded-xl bg-white/10">✕</button></div><div id="top-list" class="mt-3 space-y-2"></div></div></div>
+
+<div id="m-db" class="modal fixed inset-0 z-50 hidden items-center justify-center p-3 bg-black/75"><div class="g w-full max-w-lg rounded-3xl p-5 max-h-[88vh] overflow-y-auto text-sm space-y-3">
+  <div class="flex justify-between items-center pb-3 border-b border-white/10"><h3 class="text-lg font-extrabold">🗄️ Server holati</h3><button data-x class="w-9 h-9 rounded-xl bg-white/10">✕</button></div>
+  <p id="db-status" class="text-slate-200"></p>
+  <div class="flex gap-2 flex-wrap"><button id="btn-export" class="btn bg-emerald-600">⬇️ Eksport JSON</button><button id="btn-reset" class="btn bg-rose-600 hidden">♻️ Lokal shaharni tozalash</button></div></div></div>
+
+<script>
+(function(){'use strict';
+// ====== SOZLAMA: Supabase kalitlarini shu yerga qo'ying ======
+const SUPABASE_URL='';      // https://xxxx.supabase.co
+const SUPABASE_KEY='';      // anon public key
+// =============================================================
+const $=id=>document.getElementById(id);
+if(!window.THREE){document.body.insertAdjacentHTML('beforeend','<p style="position:fixed;inset:0;display:grid;place-items:center;color:#fff">3D kutubxona yuklanmadi. Internetni tekshiring.</p>');return;}
+
+const GRID=1000,PITCH=22,HALF=500,MAX_HOME=2,MAX_BIZ=11,LS='topib_oldi_local_v2';
+const clampPlot=v=>Math.max(1,Math.min(1e6,Math.floor(Number(v))||1));
+const p2g=n=>{n=clampPlot(n);const i=n-1;return{plotNum:n,row:Math.floor(i/GRID),col:i%GRID}};
+const g2p=(r,c)=>(r<0||c<0||r>=GRID||c>=GRID)?null:r*GRID+c+1;
+const g2w=(r,c)=>({x:(c-HALF)*PITCH,z:(r-HALF)*PITCH});
+const w2g=(x,z)=>{const c=Math.max(0,Math.min(GRID-1,Math.round(x/PITCH+HALF))),r=Math.max(0,Math.min(GRID-1,Math.round(z/PITCH+HALF)));return{row:r,col:c,plotNum:g2p(r,c)}};
+
+function districtOf(r,c){
+  if(r>=486&&r<=506&&c>=462&&c<=488)return{n:'Tashkent City Biznes',z:'Kasb va Biznes'};
+  if(r>=475&&r<=525&&c>=494&&c<=512)return{n:'Amir Temur Shohko‘chasi',z:'Kasb va Biznes'};
+  if(r>=340&&r<=390&&c>=290&&c<=340)return{n:'Chorsu Savdo Markazi',z:'Kasb va Biznes'};
+  if(r>=855&&r<=915&&c>=450&&c<=520)return{n:'Sergeli Avto-Sanoat',z:'Kasb va Biznes'};
+  if(r>=220&&r<=270&&c>=750&&c<=820)return{n:'IT Park / Universitetlar',z:'Kasb va Biznes'};
+  const T='Turar-joy';
+  if(r<220&&c>=420&&c<700)return{n:'Yunusobod tumani',z:T};
+  if(r<350&&c>=700)return{n:'Mirzo Ulug‘bek tumani',z:T};
+  if(r<340&&c<290)return{n:'Olmazor tumani',z:T};
+  if(r>=340&&r<520&&c<462)return{n:'Shayxontohur tumani',z:T};
+  if(r>=350&&r<660&&c>=620)return{n:'Yashnobod tumani',z:T};
+  if(r>=520&&r<680&&c<320)return{n:'Uchtepa tumani',z:T};
+  if(r>=680&&r<855&&c<440)return{n:'Chilonzor tumani',z:T};
+  if(r>=525&&r<750&&c>=440&&c<620)return{n:'Yakkasaroy tumani',z:T};
+  if(r>=660&&c>=680)return{n:'Bektemir tumani',z:T};
+  return{n:'Sergeli tumani',z:T};
+}
+// Tumanlar markazi (qator, ustun) — districtOf bilan mos
+const DISTRICTS=[['🏡 Yunusobod',110,560],['🏡 Mirzo Ulug‘bek',150,850],['🏡 Olmazor',150,140],['🏡 Shayxontohur',450,200],['🏡 Yashnobod',560,840],['🏡 Uchtepa',600,150],['🏡 Chilonzor',760,200],['🏡 Yakkasaroy',640,520],['🏡 Bektemir',780,850],['🏡 Sergeli',950,300],['💼 Tashkent City Biznes',496,475],['💼 Amir Temur Shohko‘chasi',500,503],['💼 Chorsu Savdo',365,315],['💼 Sergeli Avto-Sanoat',885,485],['💼 IT Park',245,785]];
+
+const LANDMARKS=[
+ {id:'amir_temur',name:'Amir Temur Xiyoboni',tag:'Toshkent Markazi',desc:'Shahar markazidagi xiyobon va Amir Temur haykali maydoni.',pos:[0,0],likes:210},
+ {id:'tele',name:'Toshkent Teleminorasi',tag:'Ramziy minora',desc:'Kuzatuv halqalari va miltillovchi mayoqli baland minora.',pos:[0,-132],likes:245},
+ {id:'city',name:'Tashkent City Mall',tag:'Biznes markaz',desc:'Savdo majmuasi va uchta shisha osmono‘par.',pos:[-110,-44],likes:198},
+ {id:'arena',name:'Humo Arena',tag:'Sport va konsert saroyi',desc:'Gumbaz tomli zamonaviy sport saroyi.',pos:[110,44],likes:184},
+ {id:'chorsu',name:'Chorsu Bozori',tag:'Tarixiy majmua',desc:'Firuza gumbazli ulkan savdo majmuasi.',pos:[-110,-132],likes:192},
+ {id:'magic',name:'Magic City Park',tag:'Istirohat bog‘i',desc:'Ko‘p minorali qasr va yashil sayilgoh.',pos:[-110,44],likes:188}];
+const reserved=(x,z)=>LANDMARKS.some(l=>Math.abs(x-l.pos[0])<24&&Math.abs(z-l.pos[1])<24);
+
+const CAREERS={clinic:['🏥','Klinika / Tibbiyot markazi','#ef4444'],it_company:['💻','IT Kompaniya','#0ea5e9'],autoservice:['🚗','Avtoservis / Tuning','#f97316'],restaurant:['🍔','Restoran / Kafe','#f59e0b'],academy:['🏫','O‘quv markazi / Universitet','#3b82f6'],supermarket:['🏪','Supermarket / Savdo markazi','#10b981'],barbershop:['💈','Barbershop / Go‘zallik saloni','#ec4899'],fitness:['🏋️','Fitnes klub','#8b5cf6'],bank:['🏦','Bank / Moliya markazi','#eab308'],factory:['🏭','Zavod / Ishlab chiqarish','#64748b'],fuel_ev:['⛽','Yoqilg‘i / Elektro-quvvatlash','#22c55e'],media_studio:['🎬','Media studiya / Kino','#a855f7']};
+const HOMES={hitech_villa:'Zamonaviy Hi-Tech Villa',oriental_courtyard:'Milliy Sharqona Hovli',duplex:'Zamonaviy Dupleks'};
+const CARS={none:['Yo‘q','#94a3b8'],gentra:['Chevrolet Gentra','#f8fafc'],malibu2:['Chevrolet Malibu 2','#1e293b'],tiggo7:['Chery Tiggo 7 Pro','#0284c7'],bmwm5:['BMW M5','#1d4ed8'],gelik:['Mercedes G-Class','#090d16'],bugatti:['Bugatti Chiron','#06b6d4']};
+
+// ====== HOLAT ======
+let sb=null,uid='local',state={plots:{},likes:{},atmo:'day',liked:[]};
+LANDMARKS.forEach(l=>state.likes[l.id]=l.likes);
+try{const s=JSON.parse(localStorage.getItem('topib_atmo')||'null');if(s)state.atmo=s;}catch(e){}
+try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(s&&s.plots)state.plots=s.plots;if(s&&s.likes)Object.assign(state.likes,s.likes);}catch(e){}
+const localSave=()=>{if(sb)return;try{localStorage.setItem(LS,JSON.stringify({plots:state.plots,likes:state.likes}))}catch(e){}};
+const myPlot=cat=>Object.values(state.plots).find(p=>p.ownerId===uid&&p.category===cat);
+let toastT;function notify(m){const t=$('toast');$('toast-msg').textContent=m;t.classList.remove('opacity-0');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.add('opacity-0'),3000)}
+const open=id=>{$(id).classList.remove('hidden');$(id).classList.add('flex')},close=id=>{$(id).classList.add('hidden');$(id).classList.remove('flex')};
+document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m||e.target.hasAttribute('data-x'))close(m.id)});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal').forEach(m=>close(m.id))});
+let totalBuilt=0;const setCount=n=>{totalBuilt=n;$('counter').textContent=n.toLocaleString()+' ta bino'};
+
+// ====== SERVER (Supabase) ======
+const rowToRec=r=>({...r.data,category:r.category,plotNum:r.plot_num,ownerId:r.owner_id});
+const recToData=r=>{const d={...r};delete d.category;delete d.plotNum;delete d.ownerId;return d};
+let needRebuild=true;
+async function refreshTotal(){if(!sb)return setCount(Object.keys(state.plots).length);const{count}=await sb.from('plots').select('*',{count:'exact',head:true});if(count!=null)setCount(count)}
+async function initServer(){
+  if(!SUPABASE_URL||!SUPABASE_KEY||!window.supabase){$('srv').textContent='💾 Lokal';$('db-status').textContent='Hozir lokal rejim: ma’lumot faqat shu brauzerda saqlanadi. Hammaga umumiy qilish uchun fayl boshidagi SUPABASE_URL va SUPABASE_KEY ni to‘ldiring.';$('btn-reset').classList.remove('hidden');setCount(Object.keys(state.plots).length);return}
+  try{
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    let{data:{session}}=await sb.auth.getSession();
+    if(!session){const r=await sb.auth.signInAnonymously();if(r.error)throw r.error;session=r.data.session}
+    uid=session.user.id;state.plots={};
+    const{data}=await sb.from('plots').select('*').eq('owner_id',uid);(data||[]).forEach(r=>state.plots[r.plot_num]=rowToRec(r));
+    sb.channel('plots').on('postgres_changes',{event:'*',schema:'public',table:'plots'},p=>{
+      if(p.eventType==='DELETE'){delete state.plots[p.old.plot_num]}else state.plots[p.new.plot_num]=rowToRec(p.new);needRebuild=true;refreshTotal()}).subscribe();
+    $('srv').textContent='🟢 Server';$('db-status').textContent='Umumiy serverga ulangan. Hamma bir xil shaharni real vaqtda ko‘radi. Har kim 1 ta uy va 1 ta kasb binosi qura oladi.';
+    refreshTotal();needRebuild=true;
+  }catch(e){console.warn(e);sb=null;uid='local';$('srv').textContent='💾 Lokal';$('db-status').textContent='Serverga ulanib bo‘lmadi, lokal rejimda ishlayapti.';$('btn-reset').classList.remove('hidden');setCount(Object.keys(state.plots).length)}
+}
+let fetchKey='';
+async function fetchChunk(c){
+  if(!sb)return;const rMin=Math.max(0,c.row-8),rMax=Math.min(GRID-1,c.row+8),cMin=Math.max(0,c.col-8),cMax=Math.min(GRID-1,c.col+8);
+  const key=rMin+'-'+cMin;if(key===fetchKey)return;fetchKey=key;const f=[];
+  for(let r=rMin;r<=rMax;r++)f.push(`and(plot_num.gte.${r*GRID+cMin+1},plot_num.lte.${r*GRID+cMax+1})`);
+  const{data,error}=await sb.from('plots').select('*').or(f.join(','));
+  if(!error&&data){data.forEach(r=>state.plots[r.plot_num]=rowToRec(r));needRebuild=true}
+}
+async function savePlot(rec,oldNum){
+  if(!sb){if(oldNum)delete state.plots[oldNum];state.plots[rec.plotNum]=rec;localSave();setCount(Object.keys(state.plots).length);return null}
+  const oldRec=oldNum?state.plots[oldNum]:null;
+  if(oldNum&&oldNum!==rec.plotNum)await sb.from('plots').delete().eq('plot_num',oldNum).eq('owner_id',uid);
+  const q=oldNum===rec.plotNum?sb.from('plots').update({data:recToData(rec)}).eq('plot_num',rec.plotNum).eq('owner_id',uid):sb.from('plots').insert({plot_num:rec.plotNum,owner_id:uid,category:rec.category,data:recToData(rec)});
+  const{error}=await q;
+  if(error){if(oldRec&&oldNum!==rec.plotNum)await sb.from('plots').insert({plot_num:oldNum,owner_id:uid,category:oldRec.category,data:recToData(oldRec)});return error.code==='23505'?'band':'xato'}
+  if(oldNum)delete state.plots[oldNum];state.plots[rec.plotNum]=rec;refreshTotal();return null;
+}
+async function deletePlot(n){
+  if(sb){const{error}=await sb.from('plots').delete().eq('plot_num',n).eq('owner_id',uid);if(error)return false}
+  delete state.plots[n];localSave();refreshTotal();return true;
+}
+
+// ====== SAHNA ======
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.5,950);camera.position.set(76,62,88);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,innerWidth<700?1.5:2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+$('host').appendChild(renderer.domElement);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=.06;controls.maxPolarAngle=Math.PI/2-.03;controls.minDistance=14;controls.maxDistance=260;controls.target.set(0,2,0);
+const hemi=new THREE.HemisphereLight(0xe0f2fe,0x334155,1.2);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfffbeb,1.5);sun.castShadow=true;sun.shadow.mapSize.set(innerWidth<700?1024:2048,innerWidth<700?1024:2048);
+Object.assign(sun.shadow.camera,{near:20,far:420,left:-160,right:160,top:160,bottom:-160});scene.add(sun,sun.target);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(26000,26000),new THREE.MeshStandardMaterial({color:0x1e293b,roughness:.9}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const landG=new THREE.Group(),chunkG=new THREE.Group(),trafficG=new THREE.Group(),fxG=new THREE.Group();scene.add(landG,chunkG,trafficG,fxG);
+let landPick=[],plotPick=[],beacon=null,glowMats=[];
+
+// umumiy geometriya va kesh (xotira oqmasligi uchun)
+const UB=new THREE.BoxGeometry(1,1,1),UC=new THREE.CylinderGeometry(1,1,1,14),UK=new THREE.ConeGeometry(1,1,14),UD=new THREE.SphereGeometry(1,20,10,0,Math.PI*2,0,Math.PI/2);
+const matC=new Map();
+function M(color,e,metal){const k=color+'|'+(e||0)+'|'+(metal||0);let m=matC.get(k);if(!m){m=new THREE.MeshStandardMaterial({color,roughness:.4,metalness:metal||0,emissive:e?color:0x000000,emissiveIntensity:e||0});matC.set(k,m)}return m}
+function add(g,geo,mat,sx,sy,sz,x,y,z){const m=new THREE.Mesh(geo,mat);m.scale.set(sx,sy,sz);m.position.set(x,y,z);m.castShadow=true;g.add(m);return m}
+const box=(g,w,h,d,mat,x,y,z)=>add(g,UB,mat,w,h,d,x,y,z),cyl=(g,r,h,mat,x,y,z)=>add(g,UC,mat,r,h,r,x,y,z),cone=(g,r,h,mat,x,y,z)=>add(g,UK,mat,r,h,r,x,y,z),dome=(g,r,mat,x,y,z)=>add(g,UD,mat,r,r,r,x,y,z);
+const facC=new Map();
+function facade(color,floors,glass){const k=color+floors+glass;let m=facC.get(k);if(m)return m;
+  const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');
+  x.fillStyle=glass?'#0b192c':'#f1f5f9';x.fillRect(0,0,64,64);x.fillStyle=glass?'#1e3a5f':'#cbd5e1';x.fillRect(0,60,64,4);
+  for(let i=0;i<3;i++){x.fillStyle=(i+floors)%3===0?'#fde047':color;x.globalAlpha=glass?.75:.9;x.fillRect(6+i*19,12,13,32)}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,floors);
+  m=new THREE.MeshStandardMaterial({map:t,roughness:.4,metalness:glass?.6:.1});facC.set(k,m);return m}
+const signC=new Map();
+function sign(t1,t2,border){const k=t1+t2;let mat=signC.get(k);if(!mat){
+  const c=document.createElement('canvas');c.width=384;c.height=96;const x=c.getContext('2d');x.fillStyle='rgba(8,14,28,.9)';x.beginPath();
+  if(x.roundRect)x.roundRect(10,10,364,76,20);else x.rect(10,10,364,76);x.fill();x.strokeStyle=border;x.lineWidth=3;x.stroke();
+  x.textAlign='center';x.fillStyle='#fff';x.font='bold 23px Inter,sans-serif';x.fillText(t1.slice(0,24),192,43);x.fillStyle='#bae6fd';x.font='600 15px Inter,sans-serif';x.fillText(t2.slice(0,34),192,68);
+  mat=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true});signC.set(k,mat)}
+  const s=new THREE.Sprite(mat);s.scale.set(12.2,3.05,1);return s}
+
+// ====== MASHINA ======
+function buildCar(type){
+  if(!type||type==='none')return null;const col=(CARS[type]||CARS.gentra)[1],g=new THREE.Group(),body=M(col,0,.6),glass=M('#090d16',0,.8),wheel=M('#111827');
+  const suv=type==='tiggo7'||type==='gelik',sup=type==='bugatti',h=sup?.55:suv?.95:.72,w=sup?1.85:1.7,l=sup?3.55:3.35;
+  box(g,w,h,l,body,0,.35+h/2,0);box(g,w*.84,sup?.42:suv?.75:.56,suv?2.25:1.75,glass,0,.35+h+.25,-.15);
+  if(type==='gelik')cyl(g,.42,.24,wheel,0,1.15,-l/2-.1).rotation.x=Math.PI/2;
+  if(sup)box(g,1.75,.1,.35,body,0,1.05,-l/2+.25);
+  [-.56,.56].forEach(x=>box(g,.32,.16,.08,M('#fef08a',1),x,.62,l/2+.02));
+  [[-1,1.05],[1,1.05],[-1,-1.05],[1,-1.05]].forEach(([s,z])=>{cyl(g,.34,.24,wheel,s*(w/2+.04),.34,z).rotation.z=Math.PI/2});
+  return g}
+// ko'chadagi harakatlanuvchi mashinalar
+const traffic=[];
+function placeCar(c,init){const d=c.userData.dir,tx=controls.target.x,tz=controls.target.z;
+  c.userData.k=Math.round((tx-11)/PITCH)+Math.floor(Math.random()*9)-4;c.position.set(c.userData.k*PITCH+11+d*1.4,0,tz+(init?(Math.random()-.5)*300:-d*150))}
+['gentra','malibu2','tiggo7','bmwm5','gelik','bugatti'].forEach((t,j)=>{for(let i=0;i<4;i++){const c=buildCar(t),d=(i+j)%2?1:-1;c.userData={dir:d,sp:7+Math.random()*7,k:0};c.rotation.y=d>0?0:Math.PI;placeCar(c,true);trafficG.add(c);traffic.push(c)}});
+
+// ====== MASKANLAR ======
+function buildLandmarks(){
+  LANDMARKS.forEach(l=>{const g=new THREE.Group();g.position.set(l.pos[0],0,l.pos[1]);
+    if(l.id==='tele'){cyl(g,12,2.2,M('#e2e8f0'),0,1.1,0);cyl(g,2.2,38,M('#f8fafc',0,.6),0,21,0);
+      const ring=M('#38bdf8',1.1);glowMats.push(ring);[28,32,35.5].forEach(y=>{cyl(g,4.6,2.4,M('#0f172a',0,.8),0,y,0);cyl(g,4.9,.4,ring,0,y+1.2,0)});
+      cone(g,1.1,18,M('#ef4444'),0,46,0);beacon=M('#ff2a55',2);add(g,UD,beacon,.8,.8,.8,0,54.8,0)}
+    else if(l.id==='amir_temur'){cyl(g,15,.6,M('#e2e8f0'),0,.3,0);cyl(g,12.5,.7,M('#16a34a'),0,.35,0);cyl(g,2.8,3.5,M('#475569'),0,2.2,0);cyl(g,1,5.2,M('#f59e0b',0,.8),0,6.5,0)}
+    else if(l.id==='city'){box(g,28,4.5,26,facade('#38bdf8',2,true),0,2.25,0);[[-7,-5,7,36],[6.5,-5.5,6.5,28],[0,5.5,7,21]].forEach(([x,z,w,h])=>box(g,w,h,w,facade('#0ea5e9',Math.round(h/3),true),x,4.5+h/2,z))}
+    else if(l.id==='arena'){cyl(g,12.5,6.5,facade('#38bdf8',2,true),0,3.25,0).scale.x=15;dome(g,12.8,M('#f8fafc',0,.5),0,6.4,0).scale.y=6}
+    else if(l.id==='chorsu'){cyl(g,12.4,3.6,M('#fef3c7'),0,1.8,0);dome(g,10.5,M('#0891b2',0,.3),0,3.6,0)}
+    else{box(g,28,.5,26,M('#16a34a'),0,.25,0);[[0,-3,2.3,15,5.5],[-6,0,1.6,11,4.2],[6,0,1.6,11,4.2]].forEach(([x,z,r,h,ch])=>{cyl(g,r,h,M('#fef3c7'),x,.5+h/2,z);cone(g,r*1.25,ch,M('#2563eb'),x,.5+h+ch/2,z)})}
+    g.traverse(n=>{if(n.isMesh){n.userData.ref={kind:'landmark',id:l.id};landPick.push(n)}});landG.add(g)})}
+buildLandmarks();
+
+// ====== UY (maks. 2 qavat) ======
+function buildHome(r,wx,wz){
+  const g=new THREE.Group();g.position.set(wx,.36,wz);const fl=Math.max(1,Math.min(MAX_HOME,+r.floors||1)),H=fl*2.7,col=r.color||'#10b981',st=r.style||'hitech_villa';let top=H;
+  if(st==='oriental_courtyard'){box(g,10.2,H,9.2,M('#fef3c7'),0,H/2,0);dome(g,3.6,M('#0891b2',0,.3),0,H,-1);top=H+3.6}
+  else{box(g,9.4,H,8.6,facade(col,fl,st==='hitech_villa'),0,H/2,0);box(g,10.4,.5,9.6,M(col,.3),0,H+.25,0);top=H+.5}
+  if(r.hasSolar)for(let x=-2.5;x<=2.5;x+=2.5){const s=box(g,2,.15,2.8,M('#1d4ed8',0,.8),x,top+.4,-1.5);s.rotation.x=.25}
+  if(r.hasGarage){box(g,3.4,2.2,4.4,M('#334155'),6.4,1.1,-2.5);box(g,2.6,1.7,.14,M('#94a3b8',0,.5),6.4,.85,-.25)}
+  const car=buildCar(r.car);if(car){car.position.set(6.4,0,3.4);g.add(car)}
+  if(r.hasPool){box(g,3.6,.25,5.2,M('#f8fafc'),-6.4,.12,2.8);box(g,3,.3,4.6,M('#06b6d4',.45),-6.4,.14,2.8)}
+  if(r.hasGarden){cyl(g,1.4,.5,M('#38bdf8',.5),-6.4,.25,-4.5);cone(g,1.1,3.4,M('#16a34a'),-6.4,2,-7)}
+  const s=sign('🏡 '+r.owner,'#'+r.plotNum.toLocaleString()+' · '+fl+' qavat','#10b981');s.position.y=top+3;g.add(s);return g}
+
+// ====== KASB BINOSI (maks. 11 qavat) ======
+function buildCareer(r,wx,wz){
+  const g=new THREE.Group();g.position.set(wx,.36,wz);const t=r.careerType||'it_company',info=CAREERS[t]||CAREERS.it_company,col=r.color||info[2],fl=Math.max(1,Math.min(MAX_BIZ,+r.floors||1)),acc=M(col,.4);let top;
+  if(t==='fuel_ev'){box(g,8.5,3.6,5,facade(col,2,true),0,1.8,-4.5);box(g,14.5,.7,8.5,acc,0,5.2,2.2);[-4.8,4.8].forEach(x=>cyl(g,.28,5.2,M('#f8fafc'),x,2.6,2.2));[-2.6,2.6].forEach(x=>box(g,.9,1.8,.7,M('#0f172a'),x,.9,2.2));top=5.6}
+  else{const wide=t==='supermarket'||t==='factory'||t==='autoservice',w=wide?13.5:10.2,d=wide?11.5:9.4,H=fl*2.4,glass=t==='it_company'||t==='media_studio'||t==='fitness';
+    box(g,w,H,d,facade(col,fl,glass),0,H/2,0);box(g,w+.6,.75,d+.6,acc,0,Math.min(H,3.6),0);top=H;
+    if(t==='clinic'){const c=M('#ef4444',.8);box(g,3.2,.9,.6,c,0,H+1.8,0);box(g,.9,3.2,.6,c,0,H+1.8,0);top=H+3.4}
+    else if(t==='factory'){[-3.5,3.5].forEach(x=>cyl(g,.7,5.5,M('#334155'),x,H+2.75,-2.5));top=H+5.5}
+    else if(t==='academy'||t==='bank'){cone(g,5.5,3,acc,0,H+1.5,0).rotation.y=Math.PI/4;top=H+3}
+    else if(t==='barbershop'){cyl(g,.45,3.4,acc,w/2+.6,2.5,d/2-.5);top=H+.5}
+    else{box(g,w*.65,1.4,d*.65,acc,0,H+.7,0);top=H+1.5}}
+  const s=sign(info[0]+' '+r.bizName,'#'+r.plotNum.toLocaleString()+' · '+fl+' qavat · '+r.owner,'#f59e0b');s.position.y=top+3;g.add(s);return g}
+
+// ====== CHUNK STREAMING ======
+const padGeo=new THREE.BoxGeometry(17.2,.36,17.2),padM={empty:M('#334155'),home:M('#064e3b'),career:M('#451a03')};
+let lastR=-999,lastC=-999;
+function stream(force){
+  const c=w2g(controls.target.x,controls.target.z),d=districtOf(c.row,c.col);$('sector').textContent=`📍 ${d.n} (${d.z}) · #${c.plotNum.toLocaleString()}`;
+  if(!force&&!needRebuild&&Math.abs(c.row-lastR)<2&&Math.abs(c.col-lastC)<2)return;
+  const moved=c.row!==lastR||c.col!==lastC;lastR=c.row;lastC=c.col;needRebuild=false;
+  chunkG.clear();plotPick=[];
+  for(let r=Math.max(0,c.row-8);r<=Math.min(GRID-1,c.row+8);r++)for(let k=Math.max(0,c.col-8);k<=Math.min(GRID-1,c.col+8);k++){
+    const w=g2w(r,k);if(reserved(w.x,w.z))continue;const n=g2p(r,k),rec=state.plots[n];
+    const pad=new THREE.Mesh(padGeo,rec?(rec.category==='career'?padM.career:padM.home):padM.empty);pad.position.set(w.x,.18,w.z);pad.receiveShadow=true;pad.userData.ref={kind:'plot',id:n};chunkG.add(pad);plotPick.push(pad);
+    if(rec){const b=rec.category==='career'?buildCareer(rec,w.x,w.z):buildHome(rec,w.x,w.z);b.traverse(m=>{if(m.isMesh||m.isSprite){m.userData.ref={kind:'plot',id:n};if(m.isMesh)plotPick.push(m)}});chunkG.add(b)}}
+  if(moved)fetchChunk(c)}
+
+// ====== KAMERA ======
+let fly=null;
+function flyTo(x,z,o=40,h=32){fly={a:controls.target.clone(),b:new THREE.Vector3(x,2,z),ca:camera.position.clone(),cb:new THREE.Vector3(x+o,h,z+o),p:0}}
+
+// ====== INSPEKTOR ======
+let sel=null;
+function show(ids,on){ids.forEach(i=>$(i).classList.toggle('hidden',!on))}
+function select(kind,id,go){
+  sel={kind,id};const ch=$('i-chips');ch.innerHTML='';const chip=t=>{const s=document.createElement('span');s.className='chip';s.textContent=t;ch.appendChild(s)};
+  show(['i-home','i-biz','i-like','i-edit','i-del'],false);
+  if(kind==='landmark'){const l=LANDMARKS.find(x=>x.id===id);if(!l)return;$('i-tag').textContent=l.tag;$('i-title').textContent=l.name;$('i-sub').textContent='📍 Toshkent';$('i-desc').textContent=l.desc;$('i-likes').textContent=state.likes[l.id];show(['i-like'],true);if(go)flyTo(l.pos[0],l.pos[1],42,34)}
+  else{const n=clampPlot(id),g=p2g(n),d=districtOf(g.row,g.col),w=g2w(g.row,g.col),r=state.plots[n];
+    $('i-title').textContent='Uchastka #'+n.toLocaleString();$('i-sub').textContent=`📍 ${d.n} (${g.row+1}-qator, ${g.col+1}-ustun)`;
+    if(reserved(w.x,w.z)){$('i-tag').textContent='Maskan hududi';$('i-desc').textContent='Bu uchastka Toshkent ramziy maskani ostida. Qurilish mumkin emas.'}
+    else if(!r){$('i-tag').textContent=d.z+' · Bo‘sh';$('i-desc').textContent='Bo‘sh uchastka. Uy (maks. 2 qavat) yoki kasb binosi (maks. 11 qavat) qurishingiz mumkin.';show(['i-home','i-biz'],true)}
+    else if(r.category==='home'){$('i-tag').textContent='🏡 Turar-joy';$('i-title').textContent=r.owner+' uyi (#'+n.toLocaleString()+')';$('i-sub').textContent=(HOMES[r.style]||'Uy')+' · '+r.floors+' qavat';$('i-desc').textContent=r.owner+'ning shaxsiy uyi. Avtomobil: '+(CARS[r.car]||CARS.none)[0]+'.';chip(r.floors+' qavat');if(r.hasGarage)chip('🏠 Garaj');if(r.hasPool)chip('🏊 Hovuz');if(r.car!=='none')chip('🚘 '+CARS[r.car][0])}
+    else{const c=CAREERS[r.careerType]||CAREERS.it_company;$('i-tag').textContent=c[0]+' Kasb va xizmat';$('i-title').textContent=r.bizName+' (#'+n.toLocaleString()+')';$('i-sub').textContent=c[1]+' · '+r.owner;$('i-desc').textContent=r.owner+' ochgan '+r.floors+' qavatli '+c[1].toLowerCase()+'.';chip(r.floors+' qavat');chip(c[1])}
+    if(r&&r.ownerId===uid)show(['i-edit','i-del'],true);if(go)flyTo(w.x,w.z,34,28)}
+  const s=$('insp');s.classList.remove('opacity-0','pointer-events-none')}
+const hide=()=>{sel=null;$('insp').classList.add('opacity-0','pointer-events-none')};
+$('i-close').onclick=hide;
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let pd={x:0,y:0};
+renderer.domElement.addEventListener('pointerdown',e=>{pd={x:e.clientX,y:e.clientY};fly=null});
+renderer.domElement.addEventListener('pointerup',e=>{if(Math.hypot(e.clientX-pd.x,e.clientY-pd.y)>6)return;
+  ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ndc,camera);const h=ray.intersectObjects(landPick.concat(plotPick),false)[0];
+  if(h&&h.object.userData.ref)select(h.object.userData.ref.kind,h.object.userData.ref.id,false)});
+
+// ====== QURISH FORMASI ======
+let bKind='home',bColor='#10b981';
+const HC=['#10b981','#0ea5e9','#f59e0b','#8b5cf6','#f43f5e','#f8fafc'];
+function colors(){$('b-colors').innerHTML='';HC.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='sw'+(c===bColor?' on':'');b.style.background=c;b.onclick=()=>{bColor=c;colors()};$('b-colors').appendChild(b)})}
+$('b-car').innerHTML=Object.entries(CARS).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('');
+$('b-opts').innerHTML=[['garage','🏠 Garaj',1],['pool','🏊 Hovuz',1],['garden','⛲ Bog‘ va favvora',1],['solar','☀️ Quyosh paneli',0]].map(([k,t,c])=>`<label class="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-2"><input id="o-${k}" type="checkbox" ${c?'checked':''}><span>${t}</span></label>`).join('');
+function upd(){const g=p2g($('b-plot').value),d=districtOf(g.row,g.col);$('b-dist').textContent='Hudud: '+d.n+' ('+d.z+')'}
+$('b-plot').oninput=upd;$('b-floors').oninput=()=>$('b-fl').textContent=$('b-floors').value+' qavat';
+function freePlot(n){n=clampPlot(n);for(let s=0;s<600;s++){const c=n+s<=1e6?n+s:n-s,g=p2g(c),w=g2w(g.row,g.col);if(!reserved(w.x,w.z)&&!state.plots[c])return c}return n}
+function openBuild(kind,plot,rec){
+  bKind=kind;const home=kind==='home';
+  $('b-title').textContent=(rec?'✏️ Tahrirlash: ':'')+(home?'🏡 Uy qurish (maks. 2 qavat)':'🏢 Kasb binosi (maks. 11 qavat)');
+  $('b-namebox').classList.toggle('hidden',home);$('b-name').required=!home;$('b-homeonly').classList.toggle('hidden',!home);
+  $('b-ownerlb').textContent=home?'Uy egasi':'Rahbar / Mutaxassis';
+  $('b-type').innerHTML=home?Object.entries(HOMES).map(([k,v])=>`<option value="${k}">${v}</option>`).join(''):Object.entries(CAREERS).map(([k,v])=>`<option value="${k}">${v[0]} ${v[1]}</option>`).join('');
+  const max=home?MAX_HOME:MAX_BIZ;$('b-floors').max=max;bColor=(rec&&rec.color)||(home?'#10b981':'#f59e0b');
+  $('b-owner').value=rec?rec.owner:'';$('b-name').value=rec&&rec.bizName||'';$('b-plot').value=plot||freePlot(500501+3);
+  $('b-type').value=rec?(rec.style||rec.careerType):$('b-type').options[0].value;
+  const fl=Math.min(max,rec?rec.floors:(home?2:6));$('b-floors').value=fl;$('b-fl').textContent=fl+' qavat';
+  $('b-car').value=rec&&rec.car||'none';
+  [['garage',rec?rec.hasGarage:true],['pool',rec?rec.hasPool:true],['garden',rec?rec.hasGarden:true],['solar',rec?rec.hasSolar:false]].forEach(([k,v])=>$('o-'+k).checked=!!v);
+  colors();upd();open('m-build')}
+$('n-home').onclick=()=>{const m=myPlot('home');m?openBuild('home',m.plotNum,m):openBuild('home')};
+$('n-biz').onclick=()=>{const m=myPlot('career');m?openBuild('biz',m.plotNum,m):openBuild('biz')};
+$('i-home').onclick=()=>{if(sel&&sel.kind==='plot')openBuild('home',sel.id)};$('i-biz').onclick=()=>{if(sel&&sel.kind==='plot')openBuild('biz',sel.id)};
+$('i-edit').onclick=()=>{const r=sel&&state.plots[sel.id];if(r)openBuild(r.category==='career'?'biz':'home',r.plotNum,r)};
+$('i-del').onclick=async()=>{if(!sel||!confirm('Bu binoni o‘chirasizmi?'))return;const n=Number(sel.id);if(await deletePlot(n)){hide();needRebuild=true;notify('🗑️ #'+n.toLocaleString()+' bo‘shatildi')}else notify('⚠️ O‘chirib bo‘lmadi')};
+$('b-form').onsubmit=async e=>{e.preventDefault();
+  const home=bKind==='home',cat=home?'home':'career',n=clampPlot($('b-plot').value),g=p2g(n),w=g2w(g.row,g.col),mine=myPlot(cat);
+  if(reserved(w.x,w.z))return notify('⚠️ Bu uchastka ramziy maskan hududida');
+  if(state.plots[n]&&!(mine&&mine.plotNum===n))return notify('⚠️ #'+n.toLocaleString()+' uchastkasi band');
+  if(mine&&mine.plotNum!==n&&!confirm('Mavjud binongiz yangi uchastkaga ko‘chiriladi. Davom etasizmi?'))return;
+  const max=home?MAX_HOME:MAX_BIZ,rec={category:cat,plotNum:n,ownerId:uid,owner:$('b-owner').value.trim().slice(0,22),floors:Math.max(1,Math.min(max,parseInt($('b-floors').value,10)||1)),color:bColor};
+  if(home)Object.assign(rec,{style:$('b-type').value,car:$('b-car').value,hasGarage:$('o-garage').checked,hasPool:$('o-pool').checked,hasGarden:$('o-garden').checked,hasSolar:$('o-solar').checked});
+  else Object.assign(rec,{careerType:$('b-type').value,bizName:$('b-name').value.trim().slice(0,26)});
+  const err=await savePlot(rec,mine&&mine.plotNum);
+  if(err)return notify(err==='band'?'⚠️ Uchastka band (boshqa foydalanuvchi olgan)':'⚠️ Serverga saqlab bo‘lmadi');
+  close('m-build');needRebuild=true;select('plot',n,true);fireworks(w.x,w.z);notify('✅ #'+n.toLocaleString()+' uchastkada qurildi!')};
+$('n-my').onclick=(()=>{let t=0;return()=>{const a=[myPlot('home'),myPlot('career')].filter(Boolean);if(!a.length)return notify('🧭 Hali hech narsa qurmagansiz');const c=a[t++%a.length];select('plot',c.plotNum,true)}})();
+
+// ====== O'TISH, ATMOSFERA, TOP-10, MUSHAK ======
+$('dist').innerHTML='<option value="">🧭 Tumanlar va maskanlar</option><optgroup label="Maskanlar">'+LANDMARKS.map(l=>`<option value="l:${l.id}">${l.name}</option>`).join('')+'</optgroup><optgroup label="Tumanlar va hududlar">'+DISTRICTS.map((d,i)=>`<option value="d:${i}">${d[0]} (#${g2p(d[1],d[2]).toLocaleString()})</option>`).join('')+'</optgroup>';
+$('dist').onchange=e=>{const v=e.target.value;if(!v)return;if(v[0]==='l')select('landmark',v.slice(2),true);else{const d=DISTRICTS[+v.slice(2)];select('plot',g2p(d[1],d[2]),true)}e.target.value=''};
+$('jump').onsubmit=e=>{e.preventDefault();const v=parseInt($('jump-in').value,10);if(!v||v<1||v>1e6)return notify('⚠️ 1 dan 1,000,000 gacha kiriting');select('plot',v,true)};
+const ATM=['day','sunset','night'];
+function setAtmo(m){state.atmo=m;try{localStorage.setItem('topib_atmo',JSON.stringify(m))}catch(e){}
+  const a={day:[0x7dd3fc,0xbae6fd,1.25,1.55,0xfffbeb,'☀️'],sunset:[0x9a3412,0xc2410c,.95,1.4,0xfb923c,'🌇'],night:[0x050a18,0x050a18,.72,.65,0x93c5fd,'🌙']}[m];
+  scene.background=new THREE.Color(a[0]);scene.fog=new THREE.FogExp2(a[1],.0024);hemi.intensity=a[2];sun.intensity=a[3];sun.color.setHex(a[4]);$('btn-atmo').textContent=a[5];
+  glowMats.forEach(x=>x.emissiveIntensity=m==='day'?.35:1.9)}
+setAtmo(ATM.includes(state.atmo)?state.atmo:'day');
+$('btn-atmo').onclick=()=>setAtmo(ATM[(ATM.indexOf(state.atmo)+1)%3]);
+$('btn-top').onclick=()=>{
+  const items=LANDMARKS.map(l=>({k:'landmark',id:l.id,t:l.name,s:l.tag+' · ❤️ '+state.likes[l.id],sc:state.likes[l.id]}));
+  Object.values(state.plots).forEach(r=>items.push({k:'plot',id:r.plotNum,t:r.category==='career'?r.bizName:r.owner+' uyi',s:r.floors+' qavat · #'+r.plotNum.toLocaleString(),sc:r.floors}));
+  items.sort((a,b)=>b.sc-a.sc);const w=$('top-list');w.innerHTML='';
+  items.slice(0,10).forEach((it,i)=>{const b=document.createElement('button');b.className='w-full text-left rounded-2xl p-3 bg-white/5 hover:bg-white/15 border border-white/10';
+    const a=document.createElement('div');a.className='font-bold text-sm truncate';a.textContent=(i+1)+'. '+it.t;const s=document.createElement('div');s.className='text-xs text-slate-300 truncate';s.textContent=it.s;
+    b.append(a,s);b.onclick=()=>{close('m-top');select(it.k,it.id,true)};w.appendChild(b)});open('m-top')};
+$('i-like').onclick=()=>{if(!sel||sel.kind!=='landmark')return;const k=sel.id,i=state.liked.indexOf(k);if(i>=0){state.liked.splice(i,1);state.likes[k]--}else{state.liked.push(k);state.likes[k]++}localSave();$('i-likes').textContent=state.likes[k]};
+$('btn-db').onclick=()=>open('m-db');
+$('btn-export').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify({plots:state.plots},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='toshkent_plots.json';a.click();URL.revokeObjectURL(u)};
+$('btn-reset').onclick=()=>{if(!confirm('Lokal shahar to‘liq o‘chiriladi. Davom etasizmi?'))return;state.plots={};localSave();setCount(0);needRebuild=true;hide();close('m-db')};
+const sparks=[],sphere=new THREE.SphereGeometry(.45,6,6),fxM=[0x38bdf8,0xf43f5e,0xfacc15,0xa855f7,0x34d399].map(c=>new THREE.MeshBasicMaterial({color:c}));
+function burst(x,z){const m=fxM[Math.floor(Math.random()*5)],o=new THREE.Vector3(x+(Math.random()-.5)*14,28+Math.random()*14,z+(Math.random()-.5)*14);
+  for(let i=0;i<40;i++){const s=new THREE.Mesh(sphere,m);s.position.copy(o);fxG.add(s);const p=Math.acos(2*Math.random()-1),t=Math.random()*6.283,v=7+Math.random()*12;sparks.push({s,v:new THREE.Vector3(v*Math.sin(p)*Math.cos(t),v*Math.cos(p),v*Math.sin(p)*Math.sin(t)),l:1.15})}}
+function fireworks(x,z){for(let i=0;i<3;i++)setTimeout(()=>burst(x,z),i*210)}
+$('n-fw').onclick=()=>fireworks(controls.target.x,controls.target.z);
+const zoom=f=>{camera.position.copy(controls.target).add(camera.position.clone().sub(controls.target).multiplyScalar(f))},rot=a=>{camera.position.copy(controls.target).add(camera.position.clone().sub(controls.target).applyAxisAngle(new THREE.Vector3(0,1,0),a))};
+$('c-in').onclick=()=>zoom(.8);$('c-out').onclick=()=>zoom(1.22);$('c-l').onclick=()=>rot(-.32);$('c-r').onclick=()=>rot(.32);$('c-0').onclick=()=>flyTo(0,0,76,62);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+// ====== ISHGA TUSHIRISH ======
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+  if(fly){fly.p=Math.min(1,fly.p+dt*1.35);const e=1-Math.pow(1-fly.p,3);controls.target.lerpVectors(fly.a,fly.b,e);camera.position.lerpVectors(fly.ca,fly.cb,e);if(fly.p>=1)fly=null}
+  controls.update();const tg=controls.target;ground.position.set(tg.x,0,tg.z);
+  sun.position.set(tg.x+100,tg.y+140,tg.z+85);sun.target.position.copy(tg);   // soya kamera bilan birga yuradi
+  stream(false);if(beacon)beacon.emissiveIntensity=1.4+Math.sin(t*5)*1.1;
+  traffic.forEach(c=>{c.position.z+=c.userData.dir*c.userData.sp*dt;if(Math.abs(c.position.z-tg.z)>160||Math.abs(c.position.x-tg.x)>140)placeCar(c,false)});
+  for(let i=sparks.length-1;i>=0;i--){const p=sparks[i];p.l-=dt*.9;if(p.l<=0){fxG.remove(p.s);sparks.splice(i,1);continue}p.v.y-=7.5*dt;p.s.position.addScaledVector(p.v,dt);p.s.scale.setScalar(Math.max(.05,p.l))}
+  renderer.render(scene,camera)}
+stream(true);animate();initServer();
+})();
+</script>
+</body>
+</html>
